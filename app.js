@@ -6,6 +6,6 @@ const app = express();
 
 app.use(express.json());
 
-app.use('/inventory/data', inventoryRoutes);
+app.use('/inventory/save', inventoryRoutes);
 
 module.exports = app;

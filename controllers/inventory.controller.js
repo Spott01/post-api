@@ -1,217 +1,105 @@
 const InventoryService = require('../services/inventory.service');
 
 class InventoryController {
-  static async getAllStations(req, res) {
+  
+ static async syncFare(req, res) {
     try {
-      const stations = await InventoryService.findAllStations();
+      const result = await InventoryService.syncFareFromRemote();
+
       return res.status(200).json({
         success: true,
-        data: stations,
+        message: 'Fare data synced successfully',
+        inserted: result.inserted,
+        updated: result.updated,
       });
     } catch (error) {
-      console.error(error);
+      console.error('Sync Fare Error:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch stations',
+        message: 'Failed to sync fare data',
       });
     }
   }
-   static async getAllFare(req, res) {
+
+  static async syncStation(req, res) {
     try {
-      const fares = await InventoryService.findAllFare();
+      const result = await InventoryService.syncStationFromRemote();
+      return res.json({
+        success: true,
+        message: 'Station synced successfully',
+        inserted: result
+      });
+    } catch (error) {
+      console.error('Sync Station Error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Station sync failed',
+        error: error.message
+      });
+    }
+  }
+   static async syncEquipment(req, res) {
+    try {
+      const count = await InventoryService.syncEquipmentFromRemote();
+
       return res.status(200).json({
         success: true,
-        data: fares,
+        message: `Equipment sync completed`,
+        synced: count
       });
     } catch (error) {
-      console.error(error);
+      console.error('Sync Equipment Error:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch fare',
+        message: 'Failed to sync equipment',
+        error: error.message
       });
     }
   }
-  static async getAllEquipment(req, res) {
+
+   static async syncUsers(req, res) {
     try {
-      const equipment = await InventoryService.findAllEquipment();
+      const count = await InventoryService.syncUsersFromRemote();
+
       return res.status(200).json({
         success: true,
-        data: equipment,
+        message: 'User sync completed',
+        synced: count
       });
     } catch (error) {
-      console.error(error);
+      console.error('Sync User Error:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch equipment',
+        message: 'Failed to sync users',
+        error: error.message
       });
     }
   }
-  static async getAllUsers(req, res) {
+   static async syncTransactionsByTime(req, res) {
     try {
-      const users = await InventoryService.findAllUsers();
-      return res.status(200).json({
+      const { date, fromTime, toTime } = req.body;
+
+      const result = await InventoryService.syncTransactionsFromRemote(
+        date,
+        fromTime,
+        toTime
+      );
+
+      return res.json({
         success: true,
-        data: users,
+        message: 'Transactions synced successfully',
+        transactions: result.transactions,
+        qrs: result.qrs
       });
     } catch (error) {
-      console.error(error);
+      console.error('Sync Transaction Error:', error);
       return res.status(500).json({
         success: false,
-        message: 'Failed to fetch users',
+        message: 'Transaction sync failed',
+        error: error.message
       });
     }
   }
-  static async getAllLoginSessions(req, res) {
-  try {
-    const sessions = await InventoryService.findAllLoginSessions();
-    return res.status(200).json({
-      success: true,
-      data: sessions,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch login sessions',
-    });
-  }
-}
-static async getLoginSessionsByDay(req, res) {
-  try {
-    const { date } = req.body;
-
-    if (!date) {
-      return res.status(400).json({
-        success: false,
-        message: 'date is required (YYYY-MM-DD)',
-      });
-    }
-
-    const sessions = await InventoryService.findLoginSessionsByDay(date);
-
-    return res.status(200).json({
-      success: true,
-      data: sessions,
-    });
-  } catch (error) {
-    console.error(error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to fetch login sessions',
-    });
-  }
-}
-static async syncLoginSessions(req, res) {
-  try {
-    const {
-      stationId = null,
-      date = null,
-      fromTime = null,
-      toTime = null,
-      updatedAfter = null,
-      limit = 100
-    } = req.body;
-
-    const result = await InventoryService.syncLoginSessions(
-      stationId,
-      date,
-      fromTime,
-      toTime,
-      updatedAfter,
-      limit
-    );
-
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('Login session sync error:', error);
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to sync login sessions'
-    });
-  }
-}
-
-static async syncTransactions(req, res) {
-  try {
-    const { stationId, fromId = 0, limit = 100, date } = req.body;
-
-    const result = await InventoryService.syncTransactions(
-      stationId,
-      fromId,
-      limit,
-      date
-    );
-
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('Transaction sync error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to sync transactions',
-    });
-  }
-}
-static async Transactions(req, res) {
-  try {
-    const {
-      stationId,
-      fromId = 0,
-      limit = 100,
-      date,
-      fromTime,
-      toTime
-    } = req.body;
-
-    const result = await InventoryService.Transactions(
-      stationId,
-      fromId,
-      limit,
-      date,
-      fromTime,
-      toTime
-    );
-
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('Transaction sync error:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to sync transactions',
-    });
-  }
-}
-static async syncQr(req, res) {
-  try {
-    const {
-      stationId = null,
-      date = null,
-      fromTime = null,
-      toTime = null,
-      updatedAfter = null,
-      limit = 100
-    } = req.body;
-
-    const result = await InventoryService.syncQr(
-      stationId,
-      date,
-      fromTime,
-      toTime,
-      updatedAfter,
-      limit
-    );
-
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error('QR sync error:', error);
-
-    return res.status(500).json({
-      status: 'error',
-      message: 'Failed to sync QR data'
-    });
-  }
-}
-
-
 
 }
 
