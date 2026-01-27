@@ -100,6 +100,73 @@ class InventoryController {
       });
     }
   }
+    static async syncQrUpdateOnly(req, res) {
+    try {
+      const { date, fromTime, toTime } = req.body;
+
+      const result = await InventoryService.syncQrUpdateOnly(
+        date,
+        fromTime,
+        toTime
+      );
+
+      return res.json({
+        success: true,
+        message: 'QR sync completed',
+        updated: result.updated,
+        ignored: result.ignored
+      });
+    } catch (error) {
+      console.error('QR Sync Error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'QR sync failed',
+        error: error.message
+      });
+    }
+  }
+    static async syncLoginSessionsDay(req, res) {
+    try {
+      const { date } = req.body;
+
+      const result = await InventoryService.syncLoginSessionsDay(date);
+
+      return res.json({
+        success: true,
+        message: 'Login sessions synced',
+        inserted: result.inserted,
+        ignored: result.ignored
+      });
+    } catch (error) {
+      console.error('Login Session Sync Error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Login session sync failed',
+        error: error.message
+      });
+    }
+  }
+  static async updateLoginSessions(req, res) {
+  try {
+    const { date } = req.body;
+
+    const result = await InventoryService.updateLoginSessionsDay(date);
+
+    res.json({
+      success: true,
+      message: 'Login sessions updated',
+      ...result
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Login session update failed',
+      error: error.message
+    });
+  }
+}
+
 
 }
 

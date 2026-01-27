@@ -300,31 +300,34 @@ static async syncUsersFromRemote() {
 
   for (const u of response.data.data) {
 
-    // 🔍 Check by email
+    // 🔍 Check by PRIMARY KEY (id)
     const existing = await db.query(
-      `SELECT id FROM public.user WHERE email = $1`,
-      [u.email]
+      `SELECT id FROM public.user WHERE id = $1`,
+      [u.id]
     );
 
     if (existing.rowCount > 0) {
+      // 🔁 UPDATE — id stays SAME
       await db.query(
         `
         UPDATE public.user
         SET
-          first_name = $2,
-          last_name = $3,
-          mobile_number = $4,
-          designation = $5,
-          password = $6,
-          is_admin = $7,
-          is_super_admin = $8,
-          is_active = $9,
-          "stationId" = $10,
-          "userGroupId" = $11,
-          user_type_code = $12
-        WHERE email = $1
+          email = $2,
+          first_name = $3,
+          last_name = $4,
+          mobile_number = $5,
+          designation = $6,
+          password = $7,
+          is_admin = $8,
+          is_super_admin = $9,
+          is_active = $10,
+          "stationId" = $11,
+          "userGroupId" = $12,
+          user_type_code = $13
+        WHERE id = $1
         `,
         [
+          u.id,
           u.email,
           u.first_name,
           u.last_name,
@@ -334,16 +337,17 @@ static async syncUsersFromRemote() {
           u.is_admin,
           u.is_super_admin,
           u.is_active,
-          u.station_id,      // FK → "stationId"
-          u.user_group_id,   // FK → "userGroupId"
+          u.station_id,
+          u.user_group_id,
           u.user_type_code
         ]
       );
     } else {
-      // ➕ INSERT
+      // ➕ INSERT — SAME ID from API
       await db.query(
         `
         INSERT INTO public.user (
+          id,
           email,
           first_name,
           last_name,
@@ -358,10 +362,11 @@ static async syncUsersFromRemote() {
           user_type_code
         )
         VALUES (
-          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12
+          $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13
         )
         `,
         [
+          u.id,
           u.email,
           u.first_name,
           u.last_name,
@@ -383,6 +388,7 @@ static async syncUsersFromRemote() {
 
   return count;
 }
+
 
 static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
   const response = await axios.post(
@@ -683,6 +689,221 @@ static async syncQrs(qrs = []) {
     }
   }
 }
+static async syncQrUpdateOnly(date, fromTime, toTime) {
+    const response = await axios.post(
+      'http://192.168.1.106/inventory/data/qr/sync',
+      { date, fromTime, toTime },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+
+    const qrs = response.data.data || [];
+
+    let updated = 0;
+    let ignored = 0;
+
+    for (const q of qrs) {
+      /** UPDATE ONLY IF qr_ticket_no EXISTS */
+      const result = await db.query(
+        `
+        UPDATE qr
+        SET
+          status = $1,
+          entry_time = $2,
+          exit_time = $3,
+          entry_gate_id = $4,
+          exit_gate_id = $5,
+          entry_station_id = $6,
+          exit_station_id = $7,
+          is_cancelled = $8,
+          entry_count = $9,
+          exit_count = $10,
+          reason = $11,
+          is_refreshed = $12,
+          refund_time = $13,
+          refund_device_id = $14,
+          admin_fee = $15,
+          qr_block = $16,
+          type = $17,
+          updated_at = $18
+        WHERE qr_ticket_no = $19
+        `,
+        [
+          q.status,
+          q.entry_time,
+          q.exit_time,
+          q.entry_gate_id,
+          q.exit_gate_id,
+          q.entry_station_id,
+          q.exit_station_id,
+          q.is_cancelled,
+          q.entry_count,
+          q.exit_count,
+          q.reason,
+          q.is_refreshed,
+          q.refund_time,
+          q.refund_device_id,
+          q.admin_fee,
+          q.qr_block,
+          q.type,
+          q.updated_at,
+          q.qr_ticket_no
+        ]
+      );
+
+      if (result.rowCount > 0) {
+        updated++;
+      } else {
+        ignored++;
+      }
+    }
+
+    return { updated, ignored };
+  }
+static async syncLoginSessionsDay(date) {
+  const response = await axios.post(
+    'http://192.168.1.106/inventory/data/login-sessions/day',
+    { date },
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  const sessions = response.data.data || [];
+
+  let inserted = 0;
+  let ignored = 0;
+
+  for (const s of sessions) {
+    const result = await db.query(
+      `
+      INSERT INTO login_session (
+        id,
+        device_id,
+        shift_id,
+        total_amount,
+        cash_amount,
+        card_amount,
+        upi_amount,
+        no_of_tickets,
+        no_of_tickets_cash,
+        no_of_tickets_upi,
+        no_of_tickets_card,
+        no_of_refund,
+        total_refund_amount,
+        no_of_cancelled,
+        total_cancelled_amount,
+        login_time,
+        logout_time,
+        created_at,
+        updated_at,
+        employee_id,
+        station_id,
+        user_id
+      )
+      VALUES (
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+        $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+        $21,$22
+      )
+      ON CONFLICT (id) DO NOTHING
+      `,
+      [
+        s.id,
+        s.device_id,
+        s.shift_id,
+        s.total_amount,
+        s.cash_amount,
+        s.card_amount,
+        s.upi_amount,
+        s.no_of_tickets,
+        s.no_of_tickets_cash,
+        s.no_of_tickets_upi,
+        s.no_of_tickets_card,
+        s.no_of_refund,
+        s.total_refund_amount,
+        s.no_of_cancelled,
+        s.total_cancelled_amount,
+        s.login_time,
+        s.logout_time,
+        s.created_at,
+        s.updated_at,
+        s.employee_id,
+        s.station_id,
+        s.user_id
+      ]
+    );
+
+    if (result.rowCount === 1) inserted++;
+    else ignored++;
+  }
+
+  return { inserted, ignored };
+}
+static async updateLoginSessionsDay(date) {
+  const response = await axios.post(
+    'http://192.168.1.106/inventory/data/login-sessions/day',
+    { date },
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+
+  const sessions = response.data.data || [];
+
+  let updated = 0;
+  let ignored = 0;
+
+  for (const s of sessions) {
+    const result = await db.query(
+      `
+      UPDATE login_session
+      SET
+        total_amount = $1,
+        cash_amount = $2,
+        card_amount = $3,
+        upi_amount = $4,
+        no_of_tickets = $5,
+        no_of_tickets_cash = $6,
+        no_of_tickets_upi = $7,
+        no_of_tickets_card = $8,
+        no_of_refund = $9,
+        total_refund_amount = $10,
+        no_of_cancelled = $11,
+        total_cancelled_amount = $12,
+        logout_time = $13,
+        updated_at = $14,
+        employee_id = $15,
+        station_id = $16,
+        user_id = $17
+      WHERE device_id = $18
+        AND shift_id = $19
+      `,
+      [
+        s.total_amount,
+        s.cash_amount,
+        s.card_amount,
+        s.upi_amount,
+        s.no_of_tickets,
+        s.no_of_tickets_cash,
+        s.no_of_tickets_upi,
+        s.no_of_tickets_card,
+        s.no_of_refund,
+        s.total_refund_amount,
+        s.no_of_cancelled,
+        s.total_cancelled_amount,
+        s.logout_time,
+        s.updated_at,          // SAME updated_at from source
+        s.employee_id,
+        s.station_id,
+        s.user_id,
+        s.device_id,
+        s.shift_id
+      ]
+    );
+
+    if (result.rowCount === 1) updated++;
+    else ignored++;
+  }
+
+  return { updated, ignored };
+}
+
 
 
 
