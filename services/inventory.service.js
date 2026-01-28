@@ -2,6 +2,24 @@ const db = require('../config/db');
 const axios = require('axios');
 
 class InventoryService {
+  // 🔧 SEQUENCE RESET (AUTO-INCREMENT FIX)
+  static async resetSequence(tableName, idColumn = 'id') {
+    const seqRes = await db.query(`
+      SELECT pg_get_serial_sequence('"${tableName}"', '${idColumn}') AS seq
+    `);
+
+    const seqName = seqRes.rows[0]?.seq;
+    if (!seqName) return;
+
+    await db.query(`
+      SELECT setval(
+        '${seqName}',
+        COALESCE((SELECT MAX(${idColumn}) FROM "${tableName}"), 0) + 1,
+        false
+      )
+    `);
+  }
+
 static async syncFareFromRemote() {
     const API_URL = 'http://172.16.0.65/inventory/data/fare';
 
@@ -544,7 +562,10 @@ static async syncTransactionsFromRemote(payload) {
     { headers: { 'Content-Type': 'application/json' } }
   );
   const transactions = response.data.data || [];
-  let count = 0;
+  // let count = 0;
+    let transactionCount = 0;
+    let qrCount = 0;
+
 
   for (const t of transactions) {
     await db.query('BEGIN');
@@ -652,17 +673,29 @@ static async syncTransactionsFromRemote(payload) {
       }
 
       // ✅ QR sync (FK-safe)
-      await this.syncQrs(t.qrs, t.id);
+      // await this.syncQrs(t.qrs, t.id);
+ const qrInserted = await this.syncQrs(t.qrs, t.id);
+        qrCount += qrInserted;
 
-      await db.query('COMMIT');
-      count++;
+      // await db.query('COMMIT');
+      // count++;
+              await db.query('COMMIT');
+        transactionCount++;
+
     } catch (err) {
       await db.query('ROLLBACK');
       throw err;
     }
   }
+      await this.resetSequence('transaction');
+    await this.resetSequence('qr');
 
-  return count;
+
+     return {
+      transactions: transactionCount,
+      qrs: qrCount
+    };
+  // return count;
 }
 
 static async syncQrs(qrs = [], transactionId) {
@@ -1218,6 +1251,87 @@ static async syncQrUpdateOnly(date, fromTime, toTime) {
 
     return { updated, ignored };
   }
+
+  //OLd working
+// static async syncLoginSessionsDay(date) {
+//   const response = await axios.post(
+//     'http://172.16.0.65/inventory/data/login-sessions/day',
+//     { date },
+//     { headers: { 'Content-Type': 'application/json' } }
+//   );
+
+//   const sessions = response.data.data || [];
+
+//   let inserted = 0;
+//   let ignored = 0;
+
+//   for (const s of sessions) {
+//     const result = await db.query(
+//       `
+//       INSERT INTO login_session (
+//         id,
+//         device_id,
+//         shift_id,
+//         total_amount,
+//         cash_amount,
+//         card_amount,
+//         upi_amount,
+//         no_of_tickets,
+//         no_of_tickets_cash,
+//         no_of_tickets_upi,
+//         no_of_tickets_card,
+//         no_of_refund,
+//         total_refund_amount,
+//         no_of_cancelled,
+//         total_cancelled_amount,
+//         login_time,
+//         logout_time,
+//         created_at,
+//         updated_at,
+//         employee_id,
+//         station_id,
+//         user_id
+//       )
+//       VALUES (
+//         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+//         $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+//         $21,$22
+//       )
+//       ON CONFLICT (id) DO NOTHING
+//       `,
+//       [
+//         s.id,
+//         s.device_id,
+//         s.shift_id,
+//         s.total_amount,
+//         s.cash_amount,
+//         s.card_amount,
+//         s.upi_amount,
+//         s.no_of_tickets,
+//         s.no_of_tickets_cash,
+//         s.no_of_tickets_upi,
+//         s.no_of_tickets_card,
+//         s.no_of_refund,
+//         s.total_refund_amount,
+//         s.no_of_cancelled,
+//         s.total_cancelled_amount,
+//         s.login_time,
+//         s.logout_time,
+//         s.created_at,
+//         s.updated_at,
+//         s.employee_id,
+//         s.station_id,
+//         s.user_id
+//       ]
+//     );
+
+//     if (result.rowCount === 1) inserted++;
+//     else ignored++;
+//   }
+
+//   return { inserted, ignored };
+// }
+//new with primary id solution
 static async syncLoginSessionsDay(date) {
   const response = await axios.post(
     'http://172.16.0.65/inventory/data/login-sessions/day',
@@ -1294,8 +1408,12 @@ static async syncLoginSessionsDay(date) {
     else ignored++;
   }
 
+  // 🔥 VERY IMPORTANT: FIX AUTO-INCREMENT / SEQUENCE
+  await this.resetSequence('login_session');
+
   return { inserted, ignored };
 }
+
 static async updateLoginSessionsDay(date) {
   const response = await axios.post(
     'http://172.16.0.65/inventory/data/login-sessions/day',
