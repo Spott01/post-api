@@ -401,8 +401,6 @@ static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
   let count = 0;
 
   for (const t of transactions) {
-
-    // 🔐 START DB TRANSACTION
     await db.query('BEGIN');
 
     try {
@@ -412,6 +410,7 @@ static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
       );
 
       if (exists.rowCount > 0) {
+        // 🔁 UPDATE (do NOT touch created_at)
         await db.query(
           `
           UPDATE "transaction"
@@ -431,8 +430,7 @@ static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
             extended_time = $14,
             "stationId" = $15,
             "destinationId" = $16,
-            created_at = $17,
-            updated_at = $18
+            updated_at = $17
           WHERE id = $1
           `,
           [
@@ -452,11 +450,11 @@ static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
             t.extended_time,
             t.station_id,
             t.destination_id,
-            t.created_at,
             t.updated_at
           ]
         );
       } else {
+        // ➕ INSERT (preserve timestamps)
         await db.query(
           `
           INSERT INTO "transaction" (
@@ -507,15 +505,12 @@ static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
         );
       }
 
-      // ✅ NOW transaction row EXISTS → safe for FK
+      // ✅ QR sync (FK-safe)
       await this.syncQrs(t.qrs, t.id);
 
-      // 🔓 COMMIT
       await db.query('COMMIT');
-
       count++;
     } catch (err) {
-      // ❌ rollback on ANY failure
       await db.query('ROLLBACK');
       throw err;
     }
@@ -524,19 +519,18 @@ static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
   return count;
 }
 
+
 static async syncQrs(qrs = [], transactionId) {
   if (!Array.isArray(qrs) || qrs.length === 0) return;
 
   for (const q of qrs) {
-
     const exists = await db.query(
       `SELECT id FROM qr WHERE id = $1`,
       [q.id]
     );
 
-    const txnId = transactionId; // 🔐 guaranteed FK
-
     if (exists.rowCount > 0) {
+      // 🔁 UPDATE (do NOT touch created_at)
       await db.query(
         `
         UPDATE qr
@@ -570,8 +564,7 @@ static async syncQrs(qrs = [], transactionId) {
           payment_mode = $28,
           refund_station_id = $29,
           refund_shift_id = $30,
-          created_at = $31,
-          updated_at = $32
+          updated_at = $31
         WHERE id = $1
         `,
         [
@@ -598,18 +591,18 @@ static async syncQrs(qrs = [], transactionId) {
           q.refund_device_id,
           q.admin_fee,
           q.qr_block,
-          txnId,
+          transactionId,        // 🔐 FK SAFE
           q.type,
           q.order_id,
           q.no_of_tickets,
           q.payment_mode,
           q.refund_station_id,
           q.refund_shift_id,
-          q.created_at,
           q.updated_at
         ]
       );
     } else {
+      // ➕ INSERT
       await db.query(
         `
         INSERT INTO qr (
@@ -677,7 +670,7 @@ static async syncQrs(qrs = [], transactionId) {
           q.refund_device_id,
           q.admin_fee,
           q.qr_block,
-          txnId,
+          transactionId,
           q.type,
           q.order_id,
           q.no_of_tickets,
@@ -691,6 +684,7 @@ static async syncQrs(qrs = [], transactionId) {
     }
   }
 }
+
 
 static async syncQrUpdateOnly(date, fromTime, toTime) {
     const response = await axios.post(
