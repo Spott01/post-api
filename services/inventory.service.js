@@ -3,7 +3,7 @@ const axios = require('axios');
 
 class InventoryService {
 static async syncFareFromRemote() {
-    const API_URL = 'http://172.16.0.65/inventory/data/fare';
+    const API_URL = 'http://172.16.0.71:9090/inventory/data/fare';
 
     const response = await axios.get(API_URL);
     const fares = response.data?.data || [];
@@ -49,7 +49,7 @@ static async syncStationFromRemote() {
   console.log(info.rows);
 
   const response = await axios.get(
-    'http://172.16.0.65/inventory/data/station'
+    'http://172.16.0.71:9090/inventory/data/station'
   );
 
   if (!Array.isArray(response.data.data)) {
@@ -97,7 +97,7 @@ static async syncStationFromRemote() {
 
 static async syncEquipmentFromRemote() {
   const response = await axios.get(
-    'http://172.16.0.65/inventory/data/equipment'
+    'http://172.16.0.71:9090/inventory/data/equipment'
   );
 
   if (!Array.isArray(response.data.data)) {
@@ -289,7 +289,7 @@ static async syncEquipmentFromRemote() {
 
 static async syncUsersFromRemote() {
   const response = await axios.get(
-    'http://172.16.0.65/inventory/data/users'
+    'http://172.16.0.71:9090/inventory/data/users'
   );
 
   if (!Array.isArray(response.data.data)) {
@@ -392,7 +392,7 @@ static async syncUsersFromRemote() {
 ////////////////////old time range does not work properly
 // static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
 //   const response = await axios.post(
-//     'http://172.16.0.65/inventory/data/transactions/time',
+//     'http://172.16.0.71:9090/inventory/data/transactions/time',
 //     { date, fromTime, toTime },
 //     { headers: { 'Content-Type': 'application/json' } }
 //   );
@@ -707,7 +707,7 @@ static async syncUsersFromRemote() {
     toTime   = toTime.length === 5 ? `${toTime}:59` : toTime;
 
     const response = await axios.post(
-      'http://172.16.0.65/inventory/data/transactions/time',
+      'http://172.16.0.71:9090/inventory/data/transactions/time',
       { date, fromTime, toTime },
       { headers: { 'Content-Type': 'application/json' } }
     );
@@ -1006,7 +1006,7 @@ static async syncUsersFromRemote() {
 
 static async syncQrUpdateOnly(date, fromTime, toTime) {
     const response = await axios.post(
-      'http://172.16.0.65/inventory/data/qr/sync',
+      'http://172.16.0.71:9090/inventory/data/qr/sync',
       { date, fromTime, toTime },
       { headers: { 'Content-Type': 'application/json' } }
     );
@@ -1076,7 +1076,7 @@ static async syncQrUpdateOnly(date, fromTime, toTime) {
   }
 static async syncLoginSessionsDay(date) {
   const response = await axios.post(
-    'http://172.16.0.65/inventory/data/login-sessions/day',
+    'http://172.16.0.71:9090/inventory/data/login-sessions/day',
     { date },
     { headers: { 'Content-Type': 'application/json' } }
   );
@@ -1154,7 +1154,7 @@ static async syncLoginSessionsDay(date) {
 }
 static async updateLoginSessionsDay(date) {
   const response = await axios.post(
-    'http://172.16.0.65/inventory/data/login-sessions/day',
+    'http://172.16.0.71:9090/inventory/data/login-sessions/day',
     { date },
     { headers: { 'Content-Type': 'application/json' } }
   );
