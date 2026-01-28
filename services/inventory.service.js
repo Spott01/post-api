@@ -3,7 +3,7 @@ const axios = require('axios');
 
 class InventoryService {
 static async syncFareFromRemote() {
-    const API_URL = 'http://172.16.0.71:9090/inventory/data/fare';
+    const API_URL = 'http://172.16.0.65/inventory/data/fare';
 
     const response = await axios.get(API_URL);
     const fares = response.data?.data || [];
@@ -49,7 +49,7 @@ static async syncStationFromRemote() {
   console.log(info.rows);
 
   const response = await axios.get(
-    'http://172.16.0.71:9090/inventory/data/station'
+    'http://172.16.0.65/inventory/data/station'
   );
 
   if (!Array.isArray(response.data.data)) {
@@ -97,7 +97,7 @@ static async syncStationFromRemote() {
 
 static async syncEquipmentFromRemote() {
   const response = await axios.get(
-    'http://172.16.0.71:9090/inventory/data/equipment'
+    'http://172.16.0.65/inventory/data/equipment'
   );
 
   if (!Array.isArray(response.data.data)) {
@@ -289,7 +289,7 @@ static async syncEquipmentFromRemote() {
 
 static async syncUsersFromRemote() {
   const response = await axios.get(
-    'http://172.16.0.71:9090/inventory/data/users'
+    'http://172.16.0.65/inventory/data/users'
   );
 
   if (!Array.isArray(response.data.data)) {
@@ -390,452 +390,452 @@ static async syncUsersFromRemote() {
 }
 
 ////////////////////old time range does not work properly
-// static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
-//   const response = await axios.post(
-//     'http://172.16.0.71:9090/inventory/data/transactions/time',
-//     { date, fromTime, toTime },
-//     { headers: { 'Content-Type': 'application/json' } }
-//   );
-// console.log(response,"respomse")
-//   const transactions = response.data.data || [];
-//   let count = 0;
+static async syncTransactionsFromRemote({ date, fromTime, toTime }) {
+  const response = await axios.post(
+    'http://172.16.0.65/inventory/data/transactions/time',
+    { date, fromTime, toTime },
+    { headers: { 'Content-Type': 'application/json' } }
+  );
+console.log(response,"respomse")
+  const transactions = response.data.data || [];
+  let count = 0;
 
-//   for (const t of transactions) {
-//     await db.query('BEGIN');
+  for (const t of transactions) {
+    await db.query('BEGIN');
 
-//     try {
-//       const exists = await db.query(
-//         `SELECT id FROM "transaction" WHERE id = $1`,
-//         [t.id]
-//       );
+    try {
+      const exists = await db.query(
+        `SELECT id FROM "transaction" WHERE id = $1`,
+        [t.id]
+      );
 
-//       if (exists.rowCount > 0) {
-//         // 🔁 UPDATE (do NOT touch created_at)
-//         await db.query(
-//           `
-//           UPDATE "transaction"
-//           SET
-//             order_id = $2,
-//             amount = $3,
-//             status = $4,
-//             no_of_tickets = $5,
-//             transaction_id = $6,
-//             bank_txn_id = $7,
-//             payment_mode = $8,
-//             txn_type = $9,
-//             device_id = $10,
-//             operator_id = $11,
-//             shift_id = $12,
-//             support_type = $13,
-//             extended_time = $14,
-//             "stationId" = $15,
-//             "destinationId" = $16,
-//             updated_at = $17
-//           WHERE id = $1
-//           `,
-//           [
-//             t.id,
-//             t.order_id,
-//             t.amount,
-//             t.status,
-//             t.no_of_tickets,
-//             t.transaction_id,
-//             t.bank_txn_id,
-//             t.payment_mode,
-//             t.txn_type,
-//             t.device_id,
-//             t.operator_id,
-//             t.shift_id,
-//             t.support_type,
-//             t.extended_time,
-//             t.station_id,
-//             t.destination_id,
-//             t.updated_at
-//           ]
-//         );
-//       } else {
-//         // ➕ INSERT (preserve timestamps)
-//         await db.query(
-//           `
-//           INSERT INTO "transaction" (
-//             id,
-//             order_id,
-//             amount,
-//             status,
-//             no_of_tickets,
-//             transaction_id,
-//             bank_txn_id,
-//             payment_mode,
-//             txn_type,
-//             device_id,
-//             operator_id,
-//             shift_id,
-//             support_type,
-//             extended_time,
-//             "stationId",
-//             "destinationId",
-//             created_at,
-//             updated_at
-//           )
-//           VALUES (
-//             $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-//             $11,$12,$13,$14,$15,$16,$17,$18
-//           )
-//           `,
-//           [
-//             t.id,
-//             t.order_id,
-//             t.amount,
-//             t.status,
-//             t.no_of_tickets,
-//             t.transaction_id,
-//             t.bank_txn_id,
-//             t.payment_mode,
-//             t.txn_type,
-//             t.device_id,
-//             t.operator_id,
-//             t.shift_id,
-//             t.support_type,
-//             t.extended_time,
-//             t.station_id,
-//             t.destination_id,
-//             t.created_at,
-//             t.updated_at
-//           ]
-//         );
-//       }
-
-//       // ✅ QR sync (FK-safe)
-//       await this.syncQrs(t.qrs, t.id);
-
-//       await db.query('COMMIT');
-//       count++;
-//     } catch (err) {
-//       await db.query('ROLLBACK');
-//       throw err;
-//     }
-//   }
-
-//   return count;
-// }
-
-
-// static async syncQrs(qrs = [], transactionId) {
-//   if (!Array.isArray(qrs) || qrs.length === 0) return;
-
-//   for (const q of qrs) {
-//     const exists = await db.query(
-//       `SELECT id FROM qr WHERE id = $1`,
-//       [q.id]
-//     );
-
-//     if (exists.rowCount > 0) {
-//       // 🔁 UPDATE (do NOT touch created_at)
-//       await db.query(
-//         `
-//         UPDATE qr
-//         SET
-//           source_id = $2,
-//           destination_id = $3,
-//           amount = $4,
-//           qr_date_time = $5,
-//           status = $6,
-//           entry_time = $7,
-//           exit_time = $8,
-//           entry_gate_id = $9,
-//           exit_gate_id = $10,
-//           entry_station_id = $11,
-//           exit_station_id = $12,
-//           is_cancelled = $13,
-//           entry_count = $14,
-//           exit_count = $15,
-//           qr_ticket_no = $16,
-//           ref_ticket_no = $17,
-//           reason = $18,
-//           is_refreshed = $19,
-//           refund_time = $20,
-//           refund_device_id = $21,
-//           admin_fee = $22,
-//           qr_block = $23,
-//           "transactionId" = $24,
-//           type = $25,
-//           order_id = $26,
-//           no_of_tickets = $27,
-//           payment_mode = $28,
-//           refund_station_id = $29,
-//           refund_shift_id = $30,
-//           updated_at = $31
-//         WHERE id = $1
-//         `,
-//         [
-//           q.id,
-//           q.source_id,
-//           q.destination_id,
-//           q.amount,
-//           q.qr_date_time,
-//           q.status,
-//           q.entry_time,
-//           q.exit_time,
-//           q.entry_gate_id,
-//           q.exit_gate_id,
-//           q.entry_station_id,
-//           q.exit_station_id,
-//           q.is_cancelled,
-//           q.entry_count,
-//           q.exit_count,
-//           q.qr_ticket_no,
-//           q.ref_ticket_no,
-//           q.reason,
-//           q.is_refreshed,
-//           q.refund_time,
-//           q.refund_device_id,
-//           q.admin_fee,
-//           q.qr_block,
-//           transactionId,        // 🔐 FK SAFE
-//           q.type,
-//           q.order_id,
-//           q.no_of_tickets,
-//           q.payment_mode,
-//           q.refund_station_id,
-//           q.refund_shift_id,
-//           q.updated_at
-//         ]
-//       );
-//     } else {
-//       // ➕ INSERT
-//       await db.query(
-//         `
-//         INSERT INTO qr (
-//           id,
-//           source_id,
-//           destination_id,
-//           amount,
-//           qr_date_time,
-//           status,
-//           entry_time,
-//           exit_time,
-//           entry_gate_id,
-//           exit_gate_id,
-//           entry_station_id,
-//           exit_station_id,
-//           is_cancelled,
-//           entry_count,
-//           exit_count,
-//           qr_ticket_no,
-//           ref_ticket_no,
-//           reason,
-//           is_refreshed,
-//           refund_time,
-//           refund_device_id,
-//           admin_fee,
-//           qr_block,
-//           "transactionId",
-//           type,
-//           order_id,
-//           no_of_tickets,
-//           payment_mode,
-//           refund_station_id,
-//           refund_shift_id,
-//           created_at,
-//           updated_at
-//         )
-//         VALUES (
-//           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-//           $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
-//           $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,
-//           $31,$32
-//         )
-//         `,
-//         [
-//           q.id,
-//           q.source_id,
-//           q.destination_id,
-//           q.amount,
-//           q.qr_date_time,
-//           q.status,
-//           q.entry_time,
-//           q.exit_time,
-//           q.entry_gate_id,
-//           q.exit_gate_id,
-//           q.entry_station_id,
-//           q.exit_station_id,
-//           q.is_cancelled,
-//           q.entry_count,
-//           q.exit_count,
-//           q.qr_ticket_no,
-//           q.ref_ticket_no,
-//           q.reason,
-//           q.is_refreshed,
-//           q.refund_time,
-//           q.refund_device_id,
-//           q.admin_fee,
-//           q.qr_block,
-//           transactionId,
-//           q.type,
-//           q.order_id,
-//           q.no_of_tickets,
-//           q.payment_mode,
-//           q.refund_station_id,
-//           q.refund_shift_id,
-//           q.created_at,
-//           q.updated_at
-//         ]
-//       );
-//     }
-//   }
-// }
-
-  // ===============================
-  // MAIN SYNC FUNCTION
-  // ===============================
-  static async syncTransactionsFromRemote(payload) {
-
-    console.log('SYNC PAYLOAD =>', payload);
-
-    if (!payload || Object.keys(payload).length === 0) {
-      throw new Error('Payload is empty. Pass { date, fromTime, toTime }');
-    }
-
-    let { date, fromTime, toTime } = payload;
-
-    if (!date || !fromTime || !toTime) {
-      throw new Error('date, fromTime, toTime are required');
-    }
-
-    // ⏱ normalize time
-    fromTime = fromTime.length === 5 ? `${fromTime}` : fromTime;
-    toTime   = toTime.length === 5 ? `${toTime}` : toTime;
-
-    const response = await axios.post(
-      'http://172.16.0.71:9090/inventory/data/transactions/time',
-      { date, fromTime, toTime },
-      { headers: { 'Content-Type': 'application/json' } }
-    );
-
-    const transactions = response.data?.data || [];
-    let count = 0;
-
-    for (const t of transactions) {
-      await db.query('BEGIN');
-
-      try {
-        await this.upsertTransaction(t);
-        await this.syncQrs(t.qrs || [], t.id);
-
-        await db.query('COMMIT');
-        count++;
-      } catch (err) {
-        await db.query('ROLLBACK');
-        throw err;
+      if (exists.rowCount > 0) {
+        // 🔁 UPDATE (do NOT touch created_at)
+        await db.query(
+          `
+          UPDATE "transaction"
+          SET
+            order_id = $2,
+            amount = $3,
+            status = $4,
+            no_of_tickets = $5,
+            transaction_id = $6,
+            bank_txn_id = $7,
+            payment_mode = $8,
+            txn_type = $9,
+            device_id = $10,
+            operator_id = $11,
+            shift_id = $12,
+            support_type = $13,
+            extended_time = $14,
+            "stationId" = $15,
+            "destinationId" = $16,
+            updated_at = $17
+          WHERE id = $1
+          `,
+          [
+            t.id,
+            t.order_id,
+            t.amount,
+            t.status,
+            t.no_of_tickets,
+            t.transaction_id,
+            t.bank_txn_id,
+            t.payment_mode,
+            t.txn_type,
+            t.device_id,
+            t.operator_id,
+            t.shift_id,
+            t.support_type,
+            t.extended_time,
+            t.station_id,
+            t.destination_id,
+            t.updated_at
+          ]
+        );
+      } else {
+        // ➕ INSERT (preserve timestamps)
+        await db.query(
+          `
+          INSERT INTO "transaction" (
+            id,
+            order_id,
+            amount,
+            status,
+            no_of_tickets,
+            transaction_id,
+            bank_txn_id,
+            payment_mode,
+            txn_type,
+            device_id,
+            operator_id,
+            shift_id,
+            support_type,
+            extended_time,
+            "stationId",
+            "destinationId",
+            created_at,
+            updated_at
+          )
+          VALUES (
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+            $11,$12,$13,$14,$15,$16,$17,$18
+          )
+          `,
+          [
+            t.id,
+            t.order_id,
+            t.amount,
+            t.status,
+            t.no_of_tickets,
+            t.transaction_id,
+            t.bank_txn_id,
+            t.payment_mode,
+            t.txn_type,
+            t.device_id,
+            t.operator_id,
+            t.shift_id,
+            t.support_type,
+            t.extended_time,
+            t.station_id,
+            t.destination_id,
+            t.created_at,
+            t.updated_at
+          ]
+        );
       }
-    }
 
-    return count;
+      // ✅ QR sync (FK-safe)
+      await this.syncQrs(t.qrs, t.id);
+
+      await db.query('COMMIT');
+      count++;
+    } catch (err) {
+      await db.query('ROLLBACK');
+      throw err;
+    }
   }
 
-  // ===============================
-  // UPSERT TRANSACTION
-  // ===============================
-  static async upsertTransaction(t) {
+  return count;
+}
+
+
+static async syncQrs(qrs = [], transactionId) {
+  if (!Array.isArray(qrs) || qrs.length === 0) return;
+
+  for (const q of qrs) {
     const exists = await db.query(
-      `SELECT id FROM "transaction" WHERE id = $1`,
-      [t.id]
+      `SELECT id FROM qr WHERE id = $1`,
+      [q.id]
     );
 
     if (exists.rowCount > 0) {
+      // 🔁 UPDATE (do NOT touch created_at)
       await db.query(
         `
-        UPDATE "transaction"
+        UPDATE qr
         SET
-          order_id = $2,
-          amount = $3,
-          status = $4,
-          no_of_tickets = $5,
-          transaction_id = $6,
-          bank_txn_id = $7,
-          payment_mode = $8,
-          txn_type = $9,
-          device_id = $10,
-          operator_id = $11,
-          shift_id = $12,
-          support_type = $13,
-          extended_time = $14,
-          "stationId" = $15,
-          "destinationId" = $16,
-          updated_at = $17
+          source_id = $2,
+          destination_id = $3,
+          amount = $4,
+          qr_date_time = $5,
+          status = $6,
+          entry_time = $7,
+          exit_time = $8,
+          entry_gate_id = $9,
+          exit_gate_id = $10,
+          entry_station_id = $11,
+          exit_station_id = $12,
+          is_cancelled = $13,
+          entry_count = $14,
+          exit_count = $15,
+          qr_ticket_no = $16,
+          ref_ticket_no = $17,
+          reason = $18,
+          is_refreshed = $19,
+          refund_time = $20,
+          refund_device_id = $21,
+          admin_fee = $22,
+          qr_block = $23,
+          "transactionId" = $24,
+          type = $25,
+          order_id = $26,
+          no_of_tickets = $27,
+          payment_mode = $28,
+          refund_station_id = $29,
+          refund_shift_id = $30,
+          updated_at = $31
         WHERE id = $1
         `,
         [
-          t.id,
-          t.order_id,
-          t.amount,
-          t.status,
-          t.no_of_tickets,
-          t.transaction_id,
-          t.bank_txn_id,
-          t.payment_mode,
-          t.txn_type,
-          t.device_id,
-          t.operator_id,
-          t.shift_id,
-          t.support_type,
-          t.extended_time,
-          t.station_id,
-          t.destination_id,
-          t.updated_at
+          q.id,
+          q.source_id,
+          q.destination_id,
+          q.amount,
+          q.qr_date_time,
+          q.status,
+          q.entry_time,
+          q.exit_time,
+          q.entry_gate_id,
+          q.exit_gate_id,
+          q.entry_station_id,
+          q.exit_station_id,
+          q.is_cancelled,
+          q.entry_count,
+          q.exit_count,
+          q.qr_ticket_no,
+          q.ref_ticket_no,
+          q.reason,
+          q.is_refreshed,
+          q.refund_time,
+          q.refund_device_id,
+          q.admin_fee,
+          q.qr_block,
+          transactionId,        // 🔐 FK SAFE
+          q.type,
+          q.order_id,
+          q.no_of_tickets,
+          q.payment_mode,
+          q.refund_station_id,
+          q.refund_shift_id,
+          q.updated_at
         ]
       );
     } else {
+      // ➕ INSERT
       await db.query(
         `
-        INSERT INTO "transaction" (
+        INSERT INTO qr (
           id,
-          order_id,
+          source_id,
+          destination_id,
           amount,
+          qr_date_time,
           status,
+          entry_time,
+          exit_time,
+          entry_gate_id,
+          exit_gate_id,
+          entry_station_id,
+          exit_station_id,
+          is_cancelled,
+          entry_count,
+          exit_count,
+          qr_ticket_no,
+          ref_ticket_no,
+          reason,
+          is_refreshed,
+          refund_time,
+          refund_device_id,
+          admin_fee,
+          qr_block,
+          "transactionId",
+          type,
+          order_id,
           no_of_tickets,
-          transaction_id,
-          bank_txn_id,
           payment_mode,
-          txn_type,
-          device_id,
-          operator_id,
-          shift_id,
-          support_type,
-          extended_time,
-          "stationId",
-          "destinationId",
+          refund_station_id,
+          refund_shift_id,
           created_at,
           updated_at
         )
         VALUES (
           $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
-          $11,$12,$13,$14,$15,$16,$17,$18
+          $11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+          $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,
+          $31,$32
         )
         `,
         [
-          t.id,
-          t.order_id,
-          t.amount,
-          t.status,
-          t.no_of_tickets,
-          t.transaction_id,
-          t.bank_txn_id,
-          t.payment_mode,
-          t.txn_type,
-          t.device_id,
-          t.operator_id,
-          t.shift_id,
-          t.support_type,
-          t.extended_time,
-          t.station_id,
-          t.destination_id,
-          t.created_at,
-          t.updated_at
+          q.id,
+          q.source_id,
+          q.destination_id,
+          q.amount,
+          q.qr_date_time,
+          q.status,
+          q.entry_time,
+          q.exit_time,
+          q.entry_gate_id,
+          q.exit_gate_id,
+          q.entry_station_id,
+          q.exit_station_id,
+          q.is_cancelled,
+          q.entry_count,
+          q.exit_count,
+          q.qr_ticket_no,
+          q.ref_ticket_no,
+          q.reason,
+          q.is_refreshed,
+          q.refund_time,
+          q.refund_device_id,
+          q.admin_fee,
+          q.qr_block,
+          transactionId,
+          q.type,
+          q.order_id,
+          q.no_of_tickets,
+          q.payment_mode,
+          q.refund_station_id,
+          q.refund_shift_id,
+          q.created_at,
+          q.updated_at
         ]
       );
     }
   }
+}
+
+  // ===============================
+  // MAIN SYNC FUNCTION
+  // ===============================
+  // static async syncTransactionsFromRemote(payload) {
+
+  //   console.log('SYNC PAYLOAD =>', payload);
+
+  //   if (!payload || Object.keys(payload).length === 0) {
+  //     throw new Error('Payload is empty. Pass { date, fromTime, toTime }');
+  //   }
+
+  //   let { date, fromTime, toTime } = payload;
+
+  //   if (!date || !fromTime || !toTime) {
+  //     throw new Error('date, fromTime, toTime are required');
+  //   }
+
+  //   // ⏱ normalize time
+  //   fromTime = fromTime.length === 5 ? `${fromTime}` : fromTime;
+  //   toTime   = toTime.length === 5 ? `${toTime}` : toTime;
+
+  //   const response = await axios.post(
+  //     'http://172.16.0.65/inventory/data/transactions/time',
+  //     { date, fromTime, toTime },
+  //     { headers: { 'Content-Type': 'application/json' } }
+  //   );
+
+  //   const transactions = response.data?.data || [];
+  //   let count = 0;
+
+  //   for (const t of transactions) {
+  //     await db.query('BEGIN');
+
+  //     try {
+  //       await this.upsertTransaction(t);
+  //       await this.syncQrs(t.qrs || [], t.id);
+
+  //       await db.query('COMMIT');
+  //       count++;
+  //     } catch (err) {
+  //       await db.query('ROLLBACK');
+  //       throw err;
+  //     }
+  //   }
+
+  //   return count;
+  // }
+
+  // ===============================
+  // UPSERT TRANSACTION
+  // ===============================
+  // static async upsertTransaction(t) {
+  //   const exists = await db.query(
+  //     `SELECT id FROM "transaction" WHERE id = $1`,
+  //     [t.id]
+  //   );
+
+  //   if (exists.rowCount > 0) {
+  //     await db.query(
+  //       `
+  //       UPDATE "transaction"
+  //       SET
+  //         order_id = $2,
+  //         amount = $3,
+  //         status = $4,
+  //         no_of_tickets = $5,
+  //         transaction_id = $6,
+  //         bank_txn_id = $7,
+  //         payment_mode = $8,
+  //         txn_type = $9,
+  //         device_id = $10,
+  //         operator_id = $11,
+  //         shift_id = $12,
+  //         support_type = $13,
+  //         extended_time = $14,
+  //         "stationId" = $15,
+  //         "destinationId" = $16,
+  //         updated_at = $17
+  //       WHERE id = $1
+  //       `,
+  //       [
+  //         t.id,
+  //         t.order_id,
+  //         t.amount,
+  //         t.status,
+  //         t.no_of_tickets,
+  //         t.transaction_id,
+  //         t.bank_txn_id,
+  //         t.payment_mode,
+  //         t.txn_type,
+  //         t.device_id,
+  //         t.operator_id,
+  //         t.shift_id,
+  //         t.support_type,
+  //         t.extended_time,
+  //         t.station_id,
+  //         t.destination_id,
+  //         t.updated_at
+  //       ]
+  //     );
+  //   } else {
+  //     await db.query(
+  //       `
+  //       INSERT INTO "transaction" (
+  //         id,
+  //         order_id,
+  //         amount,
+  //         status,
+  //         no_of_tickets,
+  //         transaction_id,
+  //         bank_txn_id,
+  //         payment_mode,
+  //         txn_type,
+  //         device_id,
+  //         operator_id,
+  //         shift_id,
+  //         support_type,
+  //         extended_time,
+  //         "stationId",
+  //         "destinationId",
+  //         created_at,
+  //         updated_at
+  //       )
+  //       VALUES (
+  //         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+  //         $11,$12,$13,$14,$15,$16,$17,$18
+  //       )
+  //       `,
+  //       [
+  //         t.id,
+  //         t.order_id,
+  //         t.amount,
+  //         t.status,
+  //         t.no_of_tickets,
+  //         t.transaction_id,
+  //         t.bank_txn_id,
+  //         t.payment_mode,
+  //         t.txn_type,
+  //         t.device_id,
+  //         t.operator_id,
+  //         t.shift_id,
+  //         t.support_type,
+  //         t.extended_time,
+  //         t.station_id,
+  //         t.destination_id,
+  //         t.created_at,
+  //         t.updated_at
+  //       ]
+  //     );
+  //   }
+  // }
 
   // ===============================
   // QR SYNC (FK SAFE)
@@ -1006,7 +1006,7 @@ static async syncUsersFromRemote() {
 
 static async syncQrUpdateOnly(date, fromTime, toTime) {
     const response = await axios.post(
-      'http://172.16.0.71:9090/inventory/data/qr/sync',
+      'http://172.16.0.65/inventory/data/qr/sync',
       { date, fromTime, toTime },
       { headers: { 'Content-Type': 'application/json' } }
     );
@@ -1076,7 +1076,7 @@ static async syncQrUpdateOnly(date, fromTime, toTime) {
   }
 static async syncLoginSessionsDay(date) {
   const response = await axios.post(
-    'http://172.16.0.71:9090/inventory/data/login-sessions/day',
+    'http://172.16.0.65/inventory/data/login-sessions/day',
     { date },
     { headers: { 'Content-Type': 'application/json' } }
   );
@@ -1154,7 +1154,7 @@ static async syncLoginSessionsDay(date) {
 }
 static async updateLoginSessionsDay(date) {
   const response = await axios.post(
-    'http://172.16.0.71:9090/inventory/data/login-sessions/day',
+    'http://172.16.0.65/inventory/data/login-sessions/day',
     { date },
     { headers: { 'Content-Type': 'application/json' } }
   );
