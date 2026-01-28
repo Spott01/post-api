@@ -75,31 +75,64 @@ class InventoryController {
       });
     }
   }
-   static async syncTransactionsByTime(req, res) {
-    try {
-      const { date, fromTime, toTime } = req.body;
+  //  static async syncTransactionsByTime(req, res) {
+  //   try {
+  //     const { date, fromTime, toTime } = req.body;
 
-      const result = await InventoryService.syncTransactionsFromRemote(
-        date,
-        fromTime,
-        toTime
-      );
+  //     const result = await InventoryService.syncTransactionsFromRemote(
+  //       date,
+  //       fromTime,
+  //       toTime
+  //     );
 
-      return res.json({
-        success: true,
-        message: 'Transactions synced successfully',
-        transactions: result.transactions,
-        qrs: result.qrs
-      });
-    } catch (error) {
-      console.error('Sync Transaction Error:', error);
-      return res.status(500).json({
+  //     return res.json({
+  //       success: true,
+  //       message: 'Transactions synced successfully',
+  //       transactions: result.transactions,
+  //       qrs: result.qrs
+  //     });
+  //   } catch (error) {
+  //     console.error('Sync Transaction Error:', error);
+  //     return res.status(500).json({
+  //       success: false,
+  //       message: 'Transaction sync failed',
+  //       error: error.message
+  //     });
+  //   }
+  // }
+  static async syncTransactionsByTime(req, res) {
+  try {
+    const { date, fromTime, toTime } = req.body;
+
+    if (!date || !fromTime || !toTime) {
+      return res.status(400).json({
         success: false,
-        message: 'Transaction sync failed',
-        error: error.message
+        message: 'date, fromTime, toTime are required'
       });
     }
+
+    const result = await InventoryService.syncTransactionsFromRemote({
+      date,
+      fromTime,
+      toTime
+    });
+
+    return res.json({
+      success: true,
+      message: 'Transactions synced successfully',
+      transactions: result.transactions,
+      qrs: result.qrs
+    });
+  } catch (error) {
+    console.error('Sync Transaction Error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Transaction sync failed',
+      error: error.message
+    });
   }
+}
+
     static async syncQrUpdateOnly(req, res) {
     try {
       const { date, fromTime, toTime } = req.body;
