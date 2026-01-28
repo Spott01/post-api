@@ -703,8 +703,8 @@ static async syncUsersFromRemote() {
     }
 
     // ⏱ normalize time
-    fromTime = fromTime.length === 5 ? `${fromTime}:00` : fromTime;
-    toTime   = toTime.length === 5 ? `${toTime}:59` : toTime;
+    fromTime = fromTime.length === 5 ? `${fromTime}` : fromTime;
+    toTime   = toTime.length === 5 ? `${toTime}` : toTime;
 
     const response = await axios.post(
       'http://172.16.0.71:9090/inventory/data/transactions/time',
